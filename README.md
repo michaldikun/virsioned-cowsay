@@ -1,58 +1,76 @@
-<img width="357" alt="screen shot 2018-03-20 at 10 45 11 pm" src="https://user-images.githubusercontent.com/8520661/37696081-290403f0-2c91-11e8-9611-2ee8cbbfe877.png">
+ # Cowsay Dockerized Pipeline
 
-## Background
-This is a minor re-write of [Cowsay Node](https://github.com/BibbyChung/cowsay-node) by Bibby Chung
+This project implements a Jenkins pipeline to automate the versioning, building, and deployment of a Dockerized Cowsay application. The pipeline is triggered by changes in the Git repository and supports versioning based on release branches.
 
-It is adapted for course convenience.
+## Project Structure
 
-Important note: Deepak Chopra is a quack.
+- **`Jenkinsfile`**: The Jenkins pipeline script defining the stages and steps of the CI/CD process.
+- **`Dockerfile`**: Dockerfile for building the Cowsay Docker image.
+- **`v.txt`**: Text file containing the version information.
+- **`gitlab-ssh`**: Jenkins credential for SSH access to GitLab.
+- **`ssh-to-ec2`**: Jenkins credential for SSH access to EC2.
 
-## Features
+## Pipeline Stages
 
-1. show random "Deepak Chopra Quote".
-2. put docker container to [bibbynet/cowsay-node](https://hub.docker.com/r/bibbynet/cowsay-node). 
- 
+### 1. Git
 
-## Build Container
+- Checks out the Git repository.
 
-```
-docker build -t <YOUR CONTAINER NAME> .
-```
+### 2. Existence of the Branch
 
-## Run Container
+- Determines the existence of the release branch based on the provided version parameter.
+- Creates a new branch if it doesn't exist.
+- Updates the `v.txt` file with the new version number.
+- Commits and pushes changes to the repository.
 
-```
-docker run --rm -p 8080:8080 <YOUR CONTAINER NAME>
-```
+### 3. Calculate Last Version
 
-## docker-compose
+- Reads the version from the `v.txt` file.
+- Determines the latest Git tag matching the version.
+- Updates the version in the `v.txt` file and increments the minor version if no matching tags are found.
 
-```
-version: "3.5"
+### 4. Build
 
-services:
-  cow-say: 
-    build:
-      context: ./
-      dockerfile: ./Dockerfile
-    ports:
-      - 8080:8080
-```
+- Builds the Docker image using the Dockerfile.
+- Tags the image with the updated version.
 
-## docker-compose from Docker Hub
+### 5. Run
 
-```
-version: "3.5"
+- Runs the Docker container in detached mode on a specified network.
 
-services:
-  cow-say: 
-    image: bibbynet/cowsay-node
-    ports:
-      - 8080:8080
-```
+### 6. Test
 
-## demo
-https://cowsay-node.herokuapp.com/
+- Conducts unit tests, such as checking the container's response and stopping the container.
 
+### 7. Release
 
-Enjoy it. ^_____^ ..
+- Tags the Docker image for release in Amazon ECR.
+- Pushes the tagged image to the ECR repository.
+
+### 8. Git Push Tag
+
+- Restores the `v.txt` file to its original state.
+- Tags the Git repository with the updated version.
+- Pushes the new tag to the GitLab repository.
+
+## Pipeline Notifications
+
+- Sends success or failure emails upon completion of the pipeline stages.
+
+## Pipeline Usage
+
+1. **Set Up Jenkins Credentials:**
+   - Add a private key credential named `gitlab-ssh` for GitLab access.
+   - Add a private key credential named `ssh-to-ec2` for EC2 access.
+
+2. **Configure Jenkins Pipeline:**
+   - Create a new pipeline job in Jenkins and point it to this Git repository.
+   - Configure the pipeline with the necessary parameters and credentials.
+
+3. **Trigger Pipeline:**
+   - Manually trigger the pipeline or set up webhooks to trigger it automatically on GitLab changes.
+
+4. **Review Pipeline Output:**
+   - Monitor the Jenkins console output for progress and any error messages.
+
+This pipeline automates the versioning, building, and deployment process for the Cowsay application. Adjust parameters and configurations as needed for your specific environment.
